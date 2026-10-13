@@ -437,23 +437,30 @@ VAULT_SUBDIRS = (
 )
 
 
-def scaffold_vault(vault_path: Path) -> bool:
+def scaffold_vault(vault_path: Path, *, timezone_name: str = "") -> bool:
     """Create the vault directory structure and special files if they don't exist yet.
 
     Idempotent: existing files/dirs are left untouched. Returns True if the vault
     directory itself had to be created (i.e. this is a brand new vault).
+    *timezone_name* (an IANA zone) goes into a new ``index.md``'s frontmatter as
+    ``timezone:``; an existing ``index.md`` is not edited here.
     """
+    from obsidian_wiki import clock
+
     created = not vault_path.is_dir()
     for name in VAULT_SUBDIRS:
         (vault_path / name).mkdir(parents=True, exist_ok=True)
 
-    timestamp = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+    tz = clock.parse_timezone(timezone_name)
+    timestamp = clock.stamp(tz)
+    timezone_line = f"timezone: {timezone_name.strip()}\n" if timezone_name.strip() else ""
 
     index_md = vault_path / "index.md"
     if not index_md.exists():
         index_md.write_text(
             "---\n"
             "title: Wiki Index\n"
+            f"{timezone_line}"
             "generated_by: obsidian-wiki memory index\n"
             "---\n\n"
             "# Wiki Index\n\n"
@@ -1101,8 +1108,40 @@ def _maybe_configure_sync(vault_path: Path, remote_arg: str | None) -> bool:
     return True
 
 
+def _maybe_set_timezone(vault_dir: Path, timezone_arg: str | None, vault_created: bool) -> str:
+    """Record the wiki's timezone in index.md: from --timezone, else by asking
+    once for a brand-new vault on a terminal. Returns the zone in effect."""
+    from obsidian_wiki import clock
+
+    name = (timezone_arg or "").strip()
+    if not name and vault_created and sys.stdin.isatty():
+        print()
+        try:
+            name = input("  Timezone for the wiki's timestamps (IANA name like America/Detroit; Enter for UTC): ").strip()
+        except EOFError:
+            name = ""
+    if name:
+        clock.set_timezone(vault_dir, name)
+        print(f"✅  Timezone: {name} (timezone: in index.md; `obsidian-wiki memory now` prints stamps in it)")
+        return name
+    current = clock.timezone_name(vault_dir)
+    if current:
+        print(f"✅  Timezone: {current} (index.md)")
+    else:
+        print("    Timezone: UTC — add `timezone: <IANA name>` to index.md's frontmatter, or re-run with --timezone")
+    return current
+
+
 def cmd_setup(args: argparse.Namespace) -> int:
     mode = "copy" if args.copy else "symlink"
+    if getattr(args, "timezone", None):
+        from obsidian_wiki import clock
+
+        try:
+            clock.parse_timezone(args.timezone)
+        except clock.TimezoneError as exc:
+            print(f"error: {exc}", file=sys.stderr)
+            return 1
     print("\n╔══════════════════════════════════════════════════╗")
     print("║         obsidian-wiki — Agent Setup              ║")
     print("╚══════════════════════════════════════════════════╝\n")
@@ -1115,11 +1154,12 @@ def cmd_setup(args: argparse.Namespace) -> int:
         print(f"      or edit OBSIDIAN_VAULT_PATH in {GLOBAL_CONFIG}.")
     else:
         vault_dir = Path(vault_path).expanduser()
-        vault_created = scaffold_vault(vault_dir)
+        vault_created = scaffold_vault(vault_dir, timezone_name=(getattr(args, "timezone", None) or ""))
         if vault_created:
             print(f"✅  Vault created at {vault_dir}")
         else:
             print(f"✅  Vault verified at {vault_dir}")
+        _maybe_set_timezone(vault_dir, getattr(args, "timezone", None), vault_created)
 
     if not args.project_only:
         print()
@@ -2393,6 +2433,46 @@ def _memory_takeaways(raw: str | None) -> str | None:
     return sys.stdin.read().strip() if raw == "-" else raw
 
 
+def _timezone_report(plan: dict, *, verbose: bool, applied: bool) -> list:
+    """Human form of a timezone migration plan or result."""
+    name = plan["timezone"]
+    files, count, stamps = plan["files"], plan["file_count"], plan["stamp_count"]
+    would = "" if applied else "would "
+    lines = []
+    if applied:
+        key = " (recorded in index.md)" if plan.get("key_set") else ""
+        lines.append(f"timezone: {name}{key}")
+        if plan.get("backup_dir"):
+            lines.append(f"backed up {len(plan['backup'])} file(s) to {plan['backup_dir']}")
+    else:
+        current = plan.get("key_current", "")
+        key = "" if current == name else (" (not yet in index.md; --apply records it)" if not current else f" (index.md says {current}; --apply changes it)")
+        lines.append(f"timezone: {name}{key}")
+    lines.append(
+        f"{count} file(s), {stamps} stamp(s) {would}change; "
+        f"{plan['naive_skipped']} naive stamp(s) and {plan['bare_dates']} bare date(s) left alone"
+    )
+    shown = files if verbose else files[:40]
+    for entry in shown:
+        lines.append(f"  {entry['path']:<60} {len(entry['stamps'])}")
+        samples = entry["stamps"] if verbose else entry["stamps"][:2]
+        for change in samples:
+            lines.append(f"    {change['line']:>5}: {change['old']}  ->  {change['new']}")
+        if not verbose and len(entry["stamps"]) > 2:
+            lines.append(f"    … {len(entry['stamps']) - 2} more in this file")
+    if len(files) > len(shown):
+        lines.append(f"  … {len(files) - len(shown)} more file(s); --verbose lists every file and stamp, --json has them all")
+    if applied:
+        lines.append(plan["log_line"])
+    elif count:
+        lines += [
+            "",
+            "Every file touched is copied to _archives/pre-timezone-migration-<stamp>/ first; --skip GLOB excludes a file.",
+            f"Apply with: obsidian-wiki memory timezone{' ' + name if plan.get('key_current') != name else ''} --apply",
+        ]
+    return lines
+
+
 def cmd_memory(args: argparse.Namespace) -> int:
     """Maintain the vault memory surface: log, index, hot cache, profile, todos.
 
@@ -2400,6 +2480,7 @@ def cmd_memory(args: argparse.Namespace) -> int:
     all of it under a single advisory lock so a parallel writer cannot drop an
     update. `--check` reports drift and exits 2 without writing, for CI.
     """
+    from obsidian_wiki import clock
     from obsidian_wiki import memory as mem
 
     context = _resolve_schema_command_context(args.vault)
@@ -2425,6 +2506,7 @@ def cmd_memory(args: argparse.Namespace) -> int:
             drift = status["index_drift"]
             return emit(status, [
                 f"vault:    {status['vault']}",
+                f"timezone: {status['timezone']}",
                 f"pages:    {status['pages']}",
                 f"index:    {'stale' if drift['stale'] else 'current'}"
                 + (f" (+{len(drift['added'])} / -{len(drift['removed'])})" if drift["stale"] else ""),
@@ -2438,6 +2520,28 @@ def cmd_memory(args: argparse.Namespace) -> int:
                 f"todos:    {status['todos']['open']} open, {status['todos']['stale']} stale,"
                 f" {status['todos']['closed']} closed",
             ])
+
+        if action == "now":
+            # The stamp a skill should write into a page: the vault's own zone,
+            # so an agent never has to know which .env it resolved.
+            tz = clock.wiki_timezone(vault)
+            payload = {
+                "timestamp": clock.stamp(tz),
+                "date": clock.today(tz),
+                "timezone": clock.timezone_name(vault) or "UTC",
+            }
+            return emit(payload, [payload["date"] if args.date else payload["timestamp"]])
+
+        if action == "timezone":
+            zone = rest[0] if rest else ""
+            skip = list(args.skip or [])
+            if args.check or not args.apply:
+                plan = mem.timezone_migration_plan(vault, zone, skip=skip)
+                lines = _timezone_report(plan, verbose=args.verbose, applied=False)
+                emit(plan, lines)
+                return 2 if plan["file_count"] else 0
+            result = mem.migrate_timezone(vault, zone, skip=skip)
+            return emit(result, _timezone_report(result, verbose=args.verbose, applied=True))
 
         if action == "migrate":
             if args.check or not args.apply:
@@ -3220,6 +3324,8 @@ def build_parser() -> argparse.ArgumentParser:
         description="Maintain the vault's memory: index.md, log.md, hot.md, and the _meta/ tables.",
         epilog="""examples:
   memory status                                  is the surface current?
+  memory now                                     the timestamp to write into a page
+  memory timezone America/Detroit --apply        convert every existing stamp to the zone
   memory sync INGEST source=x.pdf pages=3        log + index + hot, one lock
   memory sync                                    reconcile after writing pages
   memory recap --project myapp                   what a new session should know
@@ -3235,7 +3341,7 @@ need quoting: query="how do transformers work".""",
     )
     mm.add_argument(
         "memory_action",
-        choices=["status", "log", "index", "hot", "recap", "sync", "migrate", "profile", "todo"],
+        choices=["status", "now", "log", "index", "hot", "recap", "sync", "migrate", "timezone", "profile", "todo"],
         help="what to do",
     )
     mm.add_argument(
@@ -3243,7 +3349,7 @@ need quoting: query="how do transformers work".""",
         nargs="*",
         metavar="ARGS",
         help="sync/log: VERB then key=value pairs. profile: list|set KEY VALUE|forget KEY. "
-             "todo: list|add TEXT|done ID|drop ID|prune",
+             "todo: list|add TEXT|done ID|drop ID|prune. timezone: [ZONE]",
     )
     mm.add_argument("--vault", help="vault path or @name (defaults via CWD .env, then global config)")
     mm.add_argument("--json", action="store_true", help="emit machine-readable JSON")
@@ -3270,8 +3376,15 @@ need quoting: query="how do transformers work".""",
     mm_todo.add_argument("--stale-days", type=int, default=30, help="staleness threshold (default: 30)")
     mm_todo.add_argument("--all", action="store_true", help="include closed items in `todo list`")
 
+    mm_now = mm.add_argument_group("now")
+    mm_now.add_argument("--date", action="store_true", help="print the bare date (YYYY-MM-DD) instead of the timestamp")
+
+    mm_tz = mm.add_argument_group("timezone")
+    mm_tz.add_argument("--skip", action="append", metavar="GLOB", help="leave files matching this vault-relative glob alone; repeatable")
+    mm_tz.add_argument("--verbose", action="store_true", help="list every file and every stamp in the preview")
+
     mm_other = mm.add_argument_group("migrate / compatibility")
-    mm_other.add_argument("--apply", action="store_true", help="perform the migration (default is a preview)")
+    mm_other.add_argument("--apply", action="store_true", help="perform the migration / timezone conversion (default is a preview)")
     mm_other.add_argument("--verb", help="older form of the positional VERB")
     mm_other.add_argument(
         "--field", action="append", metavar="KEY=VALUE",
@@ -3341,6 +3454,12 @@ def _add_setup_args(sp: argparse.ArgumentParser) -> None:
         metavar="URL",
         help="GitHub (or any git host) repo URL for vault sync — skips the interactive "
         "prompt and configures it non-interactively (see also: obsidian-wiki sync-setup)",
+    )
+    sp.add_argument(
+        "--timezone",
+        metavar="ZONE",
+        help="IANA zone for every timestamp the wiki writes, e.g. America/Detroit "
+        "(stored as `timezone:` in index.md; default UTC)",
     )
 
 
