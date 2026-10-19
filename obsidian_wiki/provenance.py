@@ -8,6 +8,7 @@ from pathlib import Path
 from typing import Any
 
 from obsidian_wiki.cache import _is_file_key, _iter_entries
+from obsidian_wiki.links import ATTACHMENT_SUFFIXES
 from obsidian_wiki.vault import split_frontmatter
 
 _PAGE_LIST_KEYS = ("pages_produced", "pages_created")
@@ -178,7 +179,7 @@ def prefer_archive_write_path(vault: Path, rel: str) -> str | None:
 
 
 def archive_wikilink_relpath(_vault: Path, inner: str) -> str | None:
-    """Normalise a wikilink inner to `_raw/_archived/…`.md if archive-shaped.
+    """Normalise an archive link, preserving explicit attachment extensions.
 
     Does not require the file to exist. Returns None when the inner is not
     under `_raw/_archived/`.
@@ -192,4 +193,4 @@ def archive_wikilink_relpath(_vault: Path, inner: str) -> str | None:
     parts = path.parts
     if len(parts) < 3 or parts[0] != "_raw" or parts[1] != "_archived":
         return None
-    return value if value.lower().endswith(".md") else f"{value}.md"
+    return value if path.suffix.lower() in ATTACHMENT_SUFFIXES | {".md"} else f"{value}.md"

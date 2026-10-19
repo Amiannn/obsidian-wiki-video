@@ -625,3 +625,10 @@ and medium vaults never accumulate one. It is bounded to the 3 most recent keys,
 atomically (safe under concurrent runs), and ignored if corrupt — deleting it is always
 safe. Running `graph-analyse` warms the same cache that `graph-query` reads, so a nightly
 `daily-update` removes the first-query cost entirely.
+
+## Media preparation
+
+`obsidian-wiki media prepare SOURCE --vault PATH` extracts local video/audio into
+an immutable, timestamped evidence bundle for the `wiki-ingest` agent. It does not
+write wiki pages. Optional dependencies, transcript input, audio measurements and
+cache semantics are documented in [Video and audio ingestion](media.md).

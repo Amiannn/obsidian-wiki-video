@@ -9,6 +9,7 @@ __pycache__/
 .skills/packages/
 
 # Python build artifacts (pyproject.toml / `python -m build`)
+/.venv/
 /dist/
 /build/
 *.egg-info/

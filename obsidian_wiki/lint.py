@@ -12,6 +12,7 @@ from obsidian_wiki.cache import _iter_entries, _load_manifest
 from obsidian_wiki.graph_analysis import _page_slug as graph_page_slug
 from obsidian_wiki.graph_analysis import iter_pages as iter_graph_pages
 from obsidian_wiki.links import PageIndex, strip_code
+from obsidian_wiki.links import ATTACHMENT_SUFFIXES as _ATTACHMENT_SUFFIXES
 from obsidian_wiki.provenance import (
     archive_wikilink_relpath,
     clip_url_index,
@@ -231,15 +232,6 @@ def _normalise_node_id(raw: str) -> str:
     if target.lower().endswith(".md"):
         target = target[:-3]
     return "/".join(_slug(part) for part in target.strip("/").split("/") if part)
-
-
-# Extensions Obsidian embeds as attachments. Anything else after a dot is part
-# of the page name ("Node.js", "v1.2 release notes"), not a file extension.
-_ATTACHMENT_SUFFIXES = frozenset({
-    ".png", ".jpg", ".jpeg", ".gif", ".bmp", ".svg", ".webp", ".avif",
-    ".mp3", ".wav", ".m4a", ".ogg", ".flac", ".mp4", ".webm", ".mov", ".ogv",
-    ".pdf", ".canvas", ".base",
-})
 
 
 def _wikilink_page_target(raw: str) -> str | None:

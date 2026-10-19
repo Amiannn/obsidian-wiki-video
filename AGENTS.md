@@ -1,6 +1,6 @@
 # Obsidian Wiki — Agent Context
 
-A **skill-based framework** for building and maintaining an Obsidian knowledge base. No scripts or dependencies — everything is markdown instructions that you execute directly.
+A **skill-based framework** for building and maintaining an Obsidian knowledge base. Agents execute Markdown skills to distill knowledge; the lightweight CLI handles deterministic maintenance. Optional media extraction prepares video/audio evidence without changing that workflow.
 
 ## README Translation Parity
 
@@ -67,6 +67,7 @@ Skills live in `.skills/<name>/SKILL.md`. Match the user's intent to the right s
 | "set up my wiki" / "initialize" | `wiki-setup` |
 | "/wiki-history-ingest claude" / "/wiki-history-ingest copilot" / "/wiki-history-ingest codex" / "/wiki-history-ingest hermes" / "/wiki-history-ingest openclaw" / "/wiki-history-ingest pi" | `wiki-history-ingest` |
 | "ingest" / "add this to the wiki" / "process these docs" / "process this export" / "ingest this data" / logs, transcripts / "/ingest-url <url>" / "add this URL" / "ingest this link" / "save this page" | `wiki-ingest` |
+| "ingest this video" / "build a wiki from this recording" / "analyze speaking style" with local video/audio | `wiki-ingest` + `references/media-sources.md` |
 | "import my Claude history" / "mine my conversations" | `claude-history-ingest` |
 | "import my Codex history" / "mine my Codex sessions" | `codex-history-ingest` |
 | "import my Hermes history" / "mine my Hermes memories" / "ingest ~/.hermes" | `hermes-history-ingest` |

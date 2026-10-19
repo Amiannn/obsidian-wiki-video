@@ -13,6 +13,24 @@ from obsidian_wiki.provenance import (
 )
 
 
+def test_lint_checks_archived_media_as_files_not_markdown(tmp_path: Path) -> None:
+    from obsidian_wiki.lint import lint_vault
+
+    archive = tmp_path / "_raw/_archived/media/sample"
+    archive.mkdir(parents=True)
+    for name in ("clip.wav", "frame.jpg", "original.mkv", "evidence.json", "Node.js.md"):
+        (archive / name).write_bytes(b"fixture")
+    (tmp_path / "demo.md").write_text(
+        "\n".join(f"![[_raw/_archived/media/sample/{name}]]" for name in
+                  ("clip.wav", "frame.jpg", "original.mkv", "evidence.json", "Node.js", "missing.wav")),
+        encoding="utf-8",
+    )
+    report = lint_vault(tmp_path, require_trust_ledger=False)
+    assert report["findings"]["broken_links"] == [
+        {"page": "demo.md", "target": "_raw/_archived/media/sample/missing.wav"}
+    ]
+
+
 def test_invert_unions_pages_produced_and_pages_created() -> None:
     sources = {
         "_raw/_archived/a.md": {

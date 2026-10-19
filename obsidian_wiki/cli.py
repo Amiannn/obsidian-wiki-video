@@ -2891,6 +2891,9 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("-V", "--version", action="version", version=f"obsidian-wiki {__version__}")
     sub = p.add_subparsers(dest="command")
 
+    from obsidian_wiki.media import add_parser as add_media_parser
+    add_media_parser(sub)
+
     sp = sub.add_parser("setup", help="install skills into your agents and write config (default)")
     _add_setup_args(sp)
     sp.set_defaults(func=cmd_setup)

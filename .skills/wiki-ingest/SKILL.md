@@ -1,7 +1,7 @@
 ---
 name: wiki-ingest
 description: >
-  Ingest new documents, raw text, folders, or URLs into the Obsidian wiki as distilled, linked knowledge. Use for general wiki ingestion when no more specific ingest skill applies, including processing _raw/ staged content.
+  Ingest documents, local video/audio, raw text, folders, or URLs into the Obsidian wiki as distilled, linked knowledge. Use for general wiki ingestion when no more specific ingest skill applies, including processing _raw/ staged content.
 ---
 
 # Obsidian Ingest — Document Distillation
@@ -161,6 +161,7 @@ way as any other folder source, with one important difference in how files are d
 ### Step 1: Read the Source
 
 Read the source(s) the user wants to ingest. In append mode, skip files the manifest says are already ingested and unchanged. Supported formats:
+- **Local video/audio** (`.mp4`, `.mkv`, `.mov`, `.webm`, `.m4v`, `.avi`, `.wav`, `.mp3`, `.m4a`, `.flac`, `.ogg`, `.opus`) — read [references/media-sources.md](references/media-sources.md). Prepare timestamped evidence before the normal cache check and distillation. A generated media `source.md` uses the same reference. Do not treat a binary media file as text.
 - Markdown (`.md`) — read directly
 - Text (`.txt`) — read directly
 - PDF (`.pdf`) — use the Read tool with page ranges. For **academic papers** (arXiv/conference), see *Academic papers* below — re-read figure- and equation-dense pages with vision so the architecture diagram, key equations, and results tables aren't lost.

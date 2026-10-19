@@ -17,6 +17,14 @@ import re
 from collections import defaultdict
 from typing import Iterable, Optional
 
+# Explicit attachment suffixes; other dots can belong to note titles (Node.js).
+ATTACHMENT_SUFFIXES = frozenset({
+    ".png", ".jpg", ".jpeg", ".gif", ".bmp", ".svg", ".webp", ".avif",
+    ".mp3", ".wav", ".m4a", ".ogg", ".flac", ".opus",
+    ".mp4", ".webm", ".mov", ".ogv", ".mkv", ".m4v", ".avi",
+    ".pdf", ".canvas", ".base", ".json",
+})
+
 #: Obsidian does not treat a `[[link]]` inside inline code or a fenced block as
 #: a link, so neither does anything that walks the link graph.
 _FENCE_RE = re.compile(r"^(```|~~~).*?^\1[^\n]*$", re.MULTILINE | re.DOTALL)

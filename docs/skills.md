@@ -16,7 +16,7 @@ Slash commands (`/skill-name`) work in Claude Code, Cursor, Windsurf, and most C
 
 | Skill | What it does | Slash command |
 |---|---|---|
-| `wiki-ingest` | The catch-all. Distills documents, PDFs, chat exports, logs, transcripts, images, and URLs into wiki pages | `/wiki-ingest` |
+| `wiki-ingest` | The catch-all. Distills documents, PDFs, chat exports, logs, transcripts, images, local video/audio, and URLs into wiki pages. See [media ingestion](media.md). | `/wiki-ingest` |
 | `wiki-capture` | Save the current conversation as a wiki note; `--quick` stages findings to `_raw/` in under 60 seconds | `/wiki-capture` |
 | `wiki-update` | Sync the current project's knowledge into the vault — works from any repo | `/wiki-update` |
 | `wiki-research` | Autonomous multi-round web research, filed straight into the vault | `/wiki-research [topic]` |

@@ -10,7 +10,12 @@ Every time you feed the brain, it runs through these:
 
 ### 1. Ingest
 
-The agent reads your source material directly — markdown, PDFs (with page ranges), JSONL conversation exports, plain text logs, chat exports, meeting transcripts, and images (screenshots, whiteboard photos, diagrams; vision-capable model required). No preprocessing step, no pipeline to run. The agent reads the file the same way it reads code.
+The agent reads text and image sources directly — markdown, PDFs (with page ranges), JSONL conversation exports, plain text logs, chat exports, meeting transcripts, and images (screenshots, whiteboard photos, diagrams; vision-capable model required). These sources need no preprocessing pipeline.
+
+Local video/audio uses the optional `media prepare` command to extract an immutable,
+timestamped evidence packet before the agent reads it. Original media, audio clips,
+frame samples and measurements remain source evidence; the existing `wiki-ingest`
+skill distills them into the same linked Markdown pages. See [media ingestion](media.md).
 
 ### 2. Pull information
 
