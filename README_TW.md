@@ -1,18 +1,15 @@
-<h1 align="center">obsidian-wiki</h1>
+<h1 align="center">obsidian-wiki-video</h1>
 
-<p align="center"><b>一個由 AI agent 陪你一起養大的數位大腦。</b></p>
+<p align="center"><b>讓 AI Agent 把影片、音訊與文件整理成互相連結的 Wiki。</b></p>
 
 <p align="center">
-  它會記住你弄懂的事，把新知識連到你已經知道的內容，<br>
-  並在你提問時回答。
+  保留知識、上下文，以及可回聽的原始音訊證據。<br>
+  Markdown 優先、由 skill 驅動，延伸自 obsidian-wiki。
 </p>
 
 <p align="center">
-  <a href="https://pypi.org/project/obsidian-wiki/"><img src="https://img.shields.io/pypi/v/obsidian-wiki?color=blue" alt="PyPI" /></a>
-  <a href="https://deepwiki.com/Ar9av/obsidian-wiki"><img src="https://deepwiki.com/badge.svg" alt="Ask DeepWiki" /></a>
-  <a href="https://github.com/ar9av/obsidian-wiki/pulls"><img src="https://img.shields.io/badge/PRs-welcome-brightgreen.svg" alt="PRs Welcome" /></a>
-  <a href="https://x.com/_ar9av"><img src="https://img.shields.io/badge/@__ar9av-black?logo=x&logoColor=white" alt="X" /></a>
-  <a href="https://discord.gg/FH2PRX754c"><img src="https://img.shields.io/badge/Discord-join-5865F2?logo=discord&logoColor=white" alt="Discord" /></a>
+  <a href="https://github.com/Amiannn/obsidian-wiki-video/pulls"><img src="https://img.shields.io/badge/PRs-welcome-brightgreen.svg" alt="PRs Welcome" /></a>
+  <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue.svg" alt="MIT License" /></a>
 </p>
 
 <p align="center">
@@ -24,52 +21,82 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/Ar9av/obsidian-wiki/blob/main/README.md">English</a> | 繁體中文
+  <a href="./README.md">English</a> | 繁體中文
 </p>
 
 ---
 
-你在某個星期二解掉一個難題。三個月後，在另一個 repo 裡，你又從頭解了一次，因為答案躺在一份你永遠找不到的對話紀錄裡。
+這是 [Ar9av/obsidian-wiki](https://github.com/Ar9av/obsidian-wiki) 的影音擴充版本，沿用相同精神：**由 Agent 將來源整理成互相連結的 Markdown 知識，再持續維護。** 這個 fork 新增帶時間戳的逐字稿、抽樣畫面、可播放音訊片段與聲音量測，作為既有 `wiki-ingest` skill 的來源證據。
 
-這個專案解決那個問題。指定一個資料夾，告訴你的 agent 要記住什麼，它就會把你學到的東西編譯成彼此連結、而且屬於你自己的 markdown。這個模式來自 Andrej Karpathy 的 [LLM Wiki gist](https://gist.github.com/karpathy/442a6bf555914893e9891c11519de94f)：把知識編譯一次並持續維護，而不是每次都問 LLM 同樣的問題，或每次都重新跑 RAG。
+Wiki 可以連結「說了什麼」與「如何表達」。說話風格的觀察必須對應原始片段，並區分量測結果與 Agent 的解讀。概念頁、來源頁、交叉連結、來源追蹤與增量更新都沿用原專案流程。
 
-**你的第二大腦；AI agent 是你讓它成長的方式。**
+Skill 仍是 Markdown 指令，可由 Claude Code、Cursor、Codex、Windsurf、Gemini CLI 與[其他相容 Agent](./docs/agents.md) 執行。核心 CLI 維持輕量；本機影音處理使用額外安裝的 Python 套件與 FFmpeg。知識整理則由你設定的 Agent 完成。
 
-這裡每個 skill 都是一個 markdown 檔案，任何 agent 都能讀取並執行，包括 Claude Code、Cursor、Codex、Windsurf、Gemini CLI，以及[另外十幾種](https://github.com/Ar9av/obsidian-wiki/blob/main/docs/agents.md)。沒有 runtime、沒有 API key、不綁任何廠商。
+底層模式來自 Andrej Karpathy 的 [LLM Wiki gist](https://gist.github.com/karpathy/442a6bf555914893e9891c11519de94f)：將知識整理、連結，並隨新證據持續更新。
 
-## 60 秒上手
+## 快速開始
+
+**請從這個 fork 安裝，才能使用影音指令。** 從 PyPI 安裝 `obsidian-wiki`，或使用上游只提供 skill 的 plugin，都不會安裝此分支的影音實作。
+
+需要 Python 3.9+，以及系統上的 `ffmpeg`／`ffprobe`。以下範例使用相容 Bash 的 shell；Windows 請改用對應的虛擬環境啟動指令。
 
 ```bash
-pip install obsidian-wiki
-obsidian-wiki setup --vault ~/brain
+git clone --branch feat/video-ingest https://github.com/Amiannn/obsidian-wiki-video.git
+cd obsidian-wiki-video
+python -m venv .venv
+source .venv/bin/activate
+python -m pip install -e '.[media]'
+obsidian-wiki setup --vault ~/video-wiki
 ```
 
-這同時也會註冊兩個 session hook：每個新 session 一開始就知道你是誰、有哪些事還沒做完，結束時則會把值得留下的內容擷取起來。加上 `--no-hooks` 可以略過。
+CLI 與套件名稱仍是 `obsidian-wiki`。Setup 會安裝 skill 並註冊 session hook；加上 `--no-hooks` 可略過 hook。接著告訴 Agent **「set up my wiki」**，初始化 Wiki 內容。
 
-使用 `uv` 或 `pipx`？`uv tool install obsidian-wiki` 與 `pipx install obsidian-wiki` 的效果相同。（不要用 `uvx`，原因見[安裝說明](https://github.com/Ar9av/obsidian-wiki/blob/main/docs/installation.md#install-via-pip-uv-or-pipx-recommended)。）
+如果只處理文字，改用 `python -m pip install -e .` 即可。[安裝說明](./docs/installation.md) 保留上游的其他設定方式；影音功能請使用上面的 fork 安裝流程。
 
-然後在你的 agent 裡打開任何專案，說 **「set up my wiki」**。
+## 從影片建立 Wiki
 
-不想碰終端機？把下面這行交給你的 agent，它會全部處理好：
+在同一個已啟動的虛擬環境中，處理本機錄影：
+
+```bash
+obsidian-wiki media prepare /path/to/video.mp4 \
+  --vault ~/video-wiki --language zh --pitch
+```
+
+英文可改用 `--language en`，省略則自動偵測。預設使用 faster-whisper `small`，在本機 CPU 以 `int8` 執行；首次使用會下載模型權重。GPU 選項與外部逐字稿輸入方式見[影音匯入說明](./docs/media.md)。
+
+指令會回傳包含 `source` 路徑的 JSON。將該完整路徑交給 Agent：
 
 ```text
-https://github.com/Ar9av/obsidian-wiki — set up my wiki
+/wiki-ingest <source path returned by media prepare>
 ```
 
-使用 Claude Code？也可以改用 plugin 安裝，不需要 Python：
+`media prepare` 負責擷取證據；**Wiki 的知識整理仍由 Agent 執行**。來源包已產生或命中快取，不代表內容已匯入 Wiki。
 
-```text
-/plugin marketplace add Ar9av/obsidian-wiki
-/plugin install obsidian-wiki@obsidian-wiki
+```mermaid
+flowchart LR
+    A[本機影片或音訊] --> B[帶時間戳的證據]
+    B --> C[Agent 執行 wiki-ingest]
+    C --> D[互相連結的 Markdown Wiki]
 ```
 
-Plugin 裡的 skill 會加上命名空間（`/obsidian-wiki:wiki-ingest`），而且 plugin 只包含 skill，不包含 session hook 與 `obsidian-wiki` CLI。
+| 證據類型 | 目前提供的能力 |
+|---|---|
+| 說話內容 | ASR 逐字稿與近似的分段時間戳，或外部提供的逐字稿 JSON |
+| 畫面資訊 | 等距抽樣畫面，交由具備視覺能力的 Agent 閱讀 |
+| 音訊播放 | 原始影音、抽出的音軌與可播放的代表片段 |
+| 表達量測 | RMS 音量、低能量區間、逐字稿每分鐘字元數，以及可選的音高百分位數 |
+| 來源追蹤 | 來源雜湊、處理設定、片段引用與可重用的擷取結果 |
+| Wiki 整合 | 既有分類、頁面合併、交叉連結、快照、manifest 與記憶更新 |
 
-其他安裝方式（`git clone`、Claude Code plugin、Skills CLI、多個 vault）請見 **[安裝說明](https://github.com/Ar9av/obsidian-wiki/blob/main/docs/installation.md)**（英文）
+聲音量測可作為解讀依據：低能量區間不一定是說話停頓，每分鐘字元數也不等於每分鐘單字數。目前不會自動分類情緒、個性或穩定的說話風格；風格觀察需要片段引用與上下文支持。
+
+**目前範圍：** 僅支援本機檔案，尚未加入 YouTube 下載、自動講者分辨、場景偵測或自動 OCR。外部提供的講者標籤只適用於該段錄音。首次試跑使用 11 秒英語語音與明確標示的合成投影片；尚未評測中文辨識品質或複雜影片理解能力。本機試跑的 vault 未收錄在 repository 中。
+
+格式、輸出結構、快取與驗證細節 → **[影音匯入說明](./docs/media.md)**（英文）
 
 ## 你實際會做的事
 
-**餵養它。** 任何文字形式的東西：文件、PDF、聊天匯出、會議逐字稿、截圖、網址。
+**餵養它。** 文件、PDF、聊天匯出、會議逐字稿、截圖、網址，以及經過上述證據擷取流程的本機影片與音訊。
 
 ```text
 /wiki-ingest ~/research
@@ -102,13 +129,13 @@ obsidian-wiki sessions-query "the auth bug with the weird retry loop"
 /wiki-status          # 已匯入什麼、還有什麼待處理、樞紐頁面在哪
 ```
 
-全部 39 個 skill 請見 **[Skills Reference](https://github.com/Ar9av/obsidian-wiki/blob/main/docs/skills.md)**（英文）
+全部 skill 請見 **[Skills Reference](./docs/skills.md)**（英文）
 
 ## 看見它
 
 在 Obsidian 打開 vault，然後開啟 graph view（Cmd/Ctrl+P → 「Open graph view」）。說 **「color my graph」**，它就會依照 tag、category 或 visibility 為節點上色。
 
-想先看看再動手？[`examples/demo-vault/`](https://github.com/Ar9av/obsidian-wiki/tree/main/examples/demo-vault) 是一個 18 頁的範例 vault，主題是打造可靠的 LLM agent，已經依資料夾上好顏色。Clone 這個 repo，在 Obsidian 選 *Open folder as vault*，再選那個資料夾即可。
+想先看看再動手？[`examples/demo-vault/`](./examples/demo-vault) 是一個 18 頁的範例 vault，主題是打造可靠的 LLM agent，已經依資料夾上好顏色。Clone 這個 repo，在 Obsidian 選 *Open folder as vault*，再選那個資料夾即可。
 
 <p align="center">
   <img width="900" alt="obsidian-wiki graph view" src="https://github.com/user-attachments/assets/f2980840-4b5b-438a-8264-5ad1de42f483" />
@@ -130,19 +157,19 @@ memory.recap()                       # 在 session 開始時注入
 
 不需要 API key、不需要 embedding 模型、不需要向量資料庫、不需要連網——vault 就是磁碟上的 markdown，所以 agent 記住的每件事你都能讀、能 grep、能 diff。`user_id` 會隔離「關於某個人」的記憶，知識本身則仍然共享。
 
-更多 → **[Python API](https://github.com/Ar9av/obsidian-wiki/blob/main/docs/python-api.md)**（英文）
+更多 → **[Python API](./docs/python-api.md)**（英文）
 
 ## 它會跨 session 記住
 
 一個 session 開始時，vault 的記憶就已經在 context 裡了——你是誰、有哪些未完成的線索、最近改了什麼——並在結束時，趁 context 關閉前把值得留下的內容擷取起來。
 
 <p align="center">
-  <img width="720" alt="session 生命週期：開始時注入回顧，結束時提示擷取" src="https://github.com/Ar9av/obsidian-wiki/blob/main/docs/images/memory-session-lifecycle.png?raw=true" />
+  <img width="720" alt="session 生命週期：開始時注入回顧，結束時提示擷取" src="./docs/images/memory-session-lifecycle.png" />
 </p>
 
 `index.md`、`log.md`、`hot.md`，以及 `_meta/` 底下的擁有者檔案與待辦索引，全都經由同一個 writer 寫入；它會取得 lock 並以 atomic 方式寫檔，所以平行執行的 agent 不會蓋掉彼此的更新。
 
-更多 → **[Memory Surface](https://github.com/Ar9av/obsidian-wiki/blob/main/docs/memory.md)**
+更多 → **[Memory Surface](./docs/memory.md)**
 
 ## 為什麼不是一個筆記資料夾就好
 
@@ -150,23 +177,25 @@ memory.recap()                       # 在 session 開始時注入
 - **它只讀有變動的部分。** manifest 追蹤每個匯入過的來源，所以第二次執行只處理差異，而不是重跑整個資料庫。
 - **你分得出哪些是知識、哪些是猜測。** 每個陳述都會標記為 `extracted`、`^[inferred]` 或 `^[ambiguous]`，lint 會標出開始偏向臆測的頁面。
 - **查詢成本不隨規模爆炸。** 先讀標題、tag 和 summary，需要時才打開頁面內容。20 頁或 2000 頁，成本差不多。
-- **它是你的。** 就是資料夾裡的純 markdown。推到私人 repo、用 Obsidian 打開、用 grep 搜、直接刪掉都行。沒有服務、沒有鎖定，什麼都不會離開你的機器。
+- **它是你的。** 就是資料夾裡的純 markdown。推到私人 repo、用 Obsidian 打開、用 grep 搜、直接刪掉都行。資料儲存在本機，不需要代管 Wiki 服務。知識整理時如何處理輸入內容，取決於你使用的 Agent 服務。
 - **它會把脈絡帶到下一個 session。** 擁有者檔案、未完成的線索，以及一份滾動的快照，會在 session 開始時注入，你不用再把自己重新介紹一遍。
 - **在你原本工作的地方就能用。** 一個 `.skills/` 目錄，symlink 到你使用的每一個 agent。
 
-更多細節請見 **[Architecture](https://github.com/Ar9av/obsidian-wiki/blob/main/docs/architecture.md)**（英文）
+更多細節請見 **[Architecture](./docs/architecture.md)**（英文）
 
 ## 和其他做法比較
 
-| | obsidian-wiki | 桌面版 LLM-wiki 應用 | MCP 記憶伺服器 | 單一 skill 的 LLM wiki |
+| | obsidian-wiki-video | 桌面版 LLM-wiki 應用 | MCP 記憶伺服器 | 單一 skill 的 LLM wiki |
 |---|---|---|---|---|
 | **知識存在哪裡** | 你 Obsidian vault 裡的 Markdown | 由應用程式管理的資料夾 | 資料庫或事件紀錄 | 一個 Markdown 資料夾 |
 | **能搭配哪些工具** | Claude Code、Codex、Cursor、Gemini CLI，以及另外十多種 | 只有該應用程式本身 | 任何 MCP 用戶端 | 通常只有一種 agent |
-| **你要安裝什麼** | Markdown skill；Python CLI 可選 | 桌面應用程式加上 LLM API key | 一個伺服器程序 | 一個 skill |
+| **你要安裝什麼** | Markdown skill；影音匯入另需 Python CLI、選用套件與 FFmpeg | 桌面應用程式加上 LLM API key | 一個伺服器程序 | 一個 skill |
 | **能挖掘過去的 agent session** | Claude、Codex、Copilot、Hermes、OpenClaw、Pi | 不行 | 只能擷取新的 session | 不行 |
 | **會自我整理** | Lint、去重、交叉連結、標籤分類 | 視產品而定 | 不適用 | 頂多有 lint |
 
 ## 真的有幫助嗎？
+
+以下圖譜查詢結果來自上游專案，不是此 fork 的影音效能測試；影音試跑的範圍請見[原型驗證](./docs/media.md#prototype-validation)。
 
 結構性問題——「X 和 Y 是怎麼連起來的」、「哪些頁面撐住了整個 vault」、「刪掉這頁會壞掉什麼」——正是一般 agent 最不擅長的。它每一次都得 grep 過所有檔案，再自己把連結圖重建一遍。
 
@@ -207,25 +236,26 @@ memory.recap()                       # 在 session 開始時注入
 
 | | |
 |---|---|
-| **[Installation](https://github.com/Ar9av/obsidian-wiki/blob/main/docs/installation.md)** | pip、clone、由 agent 設定、多個 vault |
-| **[Skills Reference](https://github.com/Ar9av/obsidian-wiki/blob/main/docs/skills.md)** | 全部 39 個 skill 與其 slash command |
-| **[Agent Compatibility](https://github.com/Ar9av/obsidian-wiki/blob/main/docs/agents.md)** | 完整相容性表格與各 agent 手動設定 |
-| **[CLI Reference](https://github.com/Ar9av/obsidian-wiki/blob/main/docs/cli.md)** | 每一個 `obsidian-wiki` 子命令 |
-| **[Configuration](https://github.com/Ar9av/obsidian-wiki/blob/main/docs/configuration.md)** | 設定變數、QMD 語意搜尋、`_raw/` 暫存區、GitHub 同步 |
-| **[Architecture](https://github.com/Ar9av/obsidian-wiki/blob/main/docs/architecture.md)** | 四個匯入階段、vault 結構、我們在 Karpathy 模式上加了什麼 |
-| **[Python API](https://github.com/Ar9av/obsidian-wiki/blob/main/docs/python-api.md)** | `from obsidian_wiki import Memory`——把 vault 當成 agent 記憶使用 |
-| **[Memory Surface](https://github.com/Ar9av/obsidian-wiki/blob/main/docs/memory.md)** | index、log、hot cache、擁有者檔案與待辦索引 |
-| **[Session Brain](https://github.com/Ar9av/obsidian-wiki/blob/main/docs/session-brain.md)** | 建立在 agent session 歷史之上的主題圖譜 |
-| **[Browser Extension](https://github.com/Ar9av/obsidian-wiki/blob/main/docs/browser-extension.md)** | 將網頁擷取進 vault，並用 vault 內容填寫網頁表單 |
-| **[Deployment](https://github.com/Ar9av/obsidian-wiki/blob/main/docs/deployment.md)** | 以 Docker 將 vault 部署成記憶服務，讓 agent 透過 HTTP/MCP 存取 |
-| **[Contributing](https://github.com/Ar9av/obsidian-wiki/blob/main/docs/contributing.md)** | 新增 skill、維持兩份 README 同步 |
+| **[影音匯入說明](./docs/media.md)** | 影音安裝、量測、證據來源包、限制與驗證 |
+| **[Installation](./docs/installation.md)** | pip、clone、由 agent 設定、多個 vault |
+| **[Skills Reference](./docs/skills.md)** | 全部 skill 與其 slash command |
+| **[Agent Compatibility](./docs/agents.md)** | 完整相容性表格與各 agent 手動設定 |
+| **[CLI Reference](./docs/cli.md)** | 每一個 `obsidian-wiki` 子命令 |
+| **[Configuration](./docs/configuration.md)** | 設定變數、QMD 語意搜尋、`_raw/` 暫存區、GitHub 同步 |
+| **[Architecture](./docs/architecture.md)** | 四個匯入階段、vault 結構、我們在 Karpathy 模式上加了什麼 |
+| **[Python API](./docs/python-api.md)** | `from obsidian_wiki import Memory`——把 vault 當成 agent 記憶使用 |
+| **[Memory Surface](./docs/memory.md)** | index、log、hot cache、擁有者檔案與待辦索引 |
+| **[Session Brain](./docs/session-brain.md)** | 建立在 agent session 歷史之上的主題圖譜 |
+| **[Browser Extension](./docs/browser-extension.md)** | 將網頁擷取進 vault，並用 vault 內容填寫網頁表單 |
+| **[Deployment](./docs/deployment.md)** | 以 Docker 將 vault 部署成記憶服務，讓 agent 透過 HTTP/MCP 存取 |
+| **[Contributing](./docs/contributing.md)** | 新增 skill、維持兩份 README 同步 |
 
 ## 參與貢獻
 
-這個專案還很早期。skills 是能用的，但還有很多空間讓這個大腦變得更聰明：更好的交叉引用、更精準的去重、支撐更大的 vault、更多匯入來源。如果你有一個工作流程適合做成 skill，[歡迎送 PR](https://github.com/Ar9av/obsidian-wiki/blob/main/docs/contributing.md)。
+這個專案還很早期。skills 是能用的，但還有很多空間讓這個大腦變得更聰明：更好的交叉引用、更精準的去重、支撐更大的 vault、更多匯入來源。如果你有一個工作流程適合做成 skill，[歡迎送 PR](./docs/contributing.md)。
 
-會說其他語言嗎？翻譯這份 README 很適合當作第一個 PR，而且完全不用寫程式：請見 [Adding a README translation](https://github.com/Ar9av/obsidian-wiki/blob/main/docs/contributing.md#adding-a-readme-translation)（英文）。
+會說其他語言嗎？翻譯這份 README 很適合當作第一個 PR，而且完全不用寫程式：請見 [Adding a README translation](./docs/contributing.md#adding-a-readme-translation)（英文）。
 
 ## 授權
 
-[MIT](https://github.com/Ar9av/obsidian-wiki/blob/main/LICENSE)
+[MIT](./LICENSE)

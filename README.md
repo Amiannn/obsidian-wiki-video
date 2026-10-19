@@ -1,17 +1,15 @@
-<h1 align="center">obsidian-wiki</h1>
+<h1 align="center">obsidian-wiki-video</h1>
 
-<p align="center"><b>A digital brain you grow with your AI agent.</b></p>
+<p align="center"><b>Turn video, audio, and documents into a linked wiki with your AI agent.</b></p>
 
 <p align="center">
-  It remembers what you figure out, connects it to what you already know,<br>
-  and answers when you ask.
+  Keep the knowledge, the context, and the original audio evidence.<br>
+  Markdown first. Skill driven. Built on obsidian-wiki.
 </p>
 
 <p align="center">
-  <a href="https://pypi.org/project/obsidian-wiki/"><img src="https://img.shields.io/pypi/v/obsidian-wiki?color=blue" alt="PyPI" /></a>
-  <a href="https://github.com/ar9av/obsidian-wiki/pulls"><img src="https://img.shields.io/badge/PRs-welcome-brightgreen.svg" alt="PRs Welcome" /></a>
-  <a href="https://x.com/_ar9av"><img src="https://img.shields.io/badge/@__ar9av-black?logo=x&logoColor=white" alt="X" /></a>
-  <a href="https://discord.gg/FH2PRX754c"><img src="https://img.shields.io/badge/Discord-join-5865F2?logo=discord&logoColor=white" alt="Discord" /></a>
+  <a href="https://github.com/Amiannn/obsidian-wiki-video/pulls"><img src="https://img.shields.io/badge/PRs-welcome-brightgreen.svg" alt="PRs Welcome" /></a>
+  <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue.svg" alt="MIT License" /></a>
 </p>
 
 <p align="center">
@@ -23,52 +21,82 @@
 </p>
 
 <p align="center">
-  English | <a href="https://github.com/Ar9av/obsidian-wiki/blob/main/README_TW.md">繁體中文</a>
+  English | <a href="./README_TW.md">繁體中文</a>
 </p>
 
 ---
 
-You solve a hard problem on a Tuesday. Three months later, in a different repo, you solve it again from scratch — because the answer lived in a chat log you'll never find.
+A video/audio extension of [Ar9av/obsidian-wiki](https://github.com/Ar9av/obsidian-wiki), following the same idea: **agents compile sources into linked Markdown knowledge, then keep it current.** This fork adds timestamped transcripts, sampled frames, playable audio excerpts, and audio measurements as evidence for the existing `wiki-ingest` skill.
 
-This fixes that. Point it at a folder, tell your agent what to remember, and it compiles what you learn into interconnected markdown you own. The pattern comes from Andrej Karpathy's [LLM Wiki gist](https://gist.github.com/karpathy/442a6bf555914893e9891c11519de94f): compile knowledge once and keep it current, instead of asking an LLM the same questions forever or re-running RAG every time.
+The wiki can connect what was said with how it was expressed. Speaking-style observations stay tied to source segments, with measurements separated from agent interpretation. Concepts, reference pages, cross-links, source tracking, and incremental updates keep the upstream workflow.
 
-**Your second brain. Your AI agent is how you grow it.**
+Skills remain Markdown instructions for Claude Code, Cursor, Codex, Windsurf, Gemini CLI, and [other compatible agents](./docs/agents.md). The core CLI stays lightweight; local media extraction adds optional Python dependencies and FFmpeg. Knowledge synthesis uses your configured agent.
 
-Every skill here is a markdown file that any agent — Claude Code, Cursor, Codex, Windsurf, Gemini CLI, and [a dozen more](https://github.com/Ar9av/obsidian-wiki/blob/main/docs/agents.md) — reads and runs. No runtime, no API keys, no vendor.
+The underlying pattern comes from Andrej Karpathy's [LLM Wiki gist](https://gist.github.com/karpathy/442a6bf555914893e9891c11519de94f): compile knowledge once, connect it, and maintain it as new evidence arrives.
 
-## 60 seconds
+## Quick start
+
+**Install this fork to get the media commands.** Installing `obsidian-wiki` from PyPI or the upstream skills-only plugin does not install this branch's media implementation.
+
+Requires Python 3.9+ and system `ffmpeg` / `ffprobe`. The example below uses a Bash-compatible shell; on Windows, use your virtual environment's activation command.
 
 ```bash
-pip install obsidian-wiki
-obsidian-wiki setup --vault ~/brain
+git clone --branch feat/video-ingest https://github.com/Amiannn/obsidian-wiki-video.git
+cd obsidian-wiki-video
+python -m venv .venv
+source .venv/bin/activate
+python -m pip install -e '.[media]'
+obsidian-wiki setup --vault ~/video-wiki
 ```
 
-That also registers the two session hooks, so every new session starts with who you are and what's open, and ends by capturing anything reusable. Pass `--no-hooks` to skip them.
+The CLI/package name remains `obsidian-wiki`. Setup installs skills and registers session hooks; add `--no-hooks` to skip the hooks. Then tell your agent **"set up my wiki"** to initialize the wiki content.
 
-Using `uv` or `pipx`? `uv tool install obsidian-wiki` and `pipx install obsidian-wiki` work the same way. (Not `uvx` — see [Installation](https://github.com/Ar9av/obsidian-wiki/blob/main/docs/installation.md#install-via-pip-uv-or-pipx-recommended).)
+For text-only use, install with `python -m pip install -e .` instead. See [Installation](./docs/installation.md) for the inherited setup options; use the fork installation above for video/audio.
 
-Then open any project in your agent and say **"set up my wiki"**.
+## From a video to a wiki
 
-Prefer not to touch a terminal? Give your agent this and it'll do the whole thing:
+Prepare a local recording in the same activated environment:
+
+```bash
+obsidian-wiki media prepare /path/to/video.mp4 \
+  --vault ~/video-wiki --language zh --pitch
+```
+
+Use `--language en` for English, or omit it for automatic detection. The default is faster-whisper `small`, running locally on CPU with `int8`; the first use downloads model weights. GPU options and externally supplied transcripts are described in [Video and audio ingestion](./docs/media.md).
+
+The command returns JSON containing a `source` path. Give that exact path to your agent:
 
 ```text
-https://github.com/Ar9av/obsidian-wiki — set up my wiki
+/wiki-ingest <source path returned by media prepare>
 ```
 
-Using Claude Code? Install it as a plugin instead — no Python needed:
+`media prepare` extracts evidence; **the agent performs the wiki compilation**. A prepared or cached bundle does not mean its knowledge has been ingested yet.
 
-```text
-/plugin marketplace add Ar9av/obsidian-wiki
-/plugin install obsidian-wiki@obsidian-wiki
+```mermaid
+flowchart LR
+    A[Local video or audio] --> B[Timestamped evidence]
+    B --> C[Agent using wiki-ingest]
+    C --> D[Linked Markdown wiki]
 ```
 
-Plugin skills are namespaced (`/obsidian-wiki:wiki-ingest`), and the plugin ships the skills only — not the session hooks or the `obsidian-wiki` CLI.
+| Evidence | What this version provides |
+|---|---|
+| Speech content | ASR transcript with approximate segment timestamps, or supplied transcript JSON |
+| Visual context | Uniformly sampled frames for a vision-capable agent to inspect |
+| Audio playback | Original media, extracted audio, and representative playable excerpts |
+| Delivery measurements | RMS level, low-energy intervals, transcript characters per minute, optional pitch percentiles |
+| Traceability | Source hashes, processing settings, segment citations, and reusable extraction bundles |
+| Wiki integration | Existing categories, page merging, cross-links, snapshots, manifest, and memory updates |
 
-Other paths — `git clone`, Claude Code plugin, Skills CLI, multiple vaults → **[Installation](https://github.com/Ar9av/obsidian-wiki/blob/main/docs/installation.md)**
+Audio measurements support interpretation: low energy is not necessarily a speaking pause, and character rate is not words per minute. Emotion, personality, and stable speaking style are not automatically classified. Style observations require cited examples and context.
+
+**Current scope:** local files only; no YouTube downloader, automatic speaker diarization, scene detection, or automatic OCR. Supplied speaker labels stay local to a recording. The initial trial used 11 seconds of English speech with a clearly labeled synthetic slide; Mandarin ASR quality and complex video understanding have not been benchmarked. The local trial vault is not included in the repository.
+
+Formats, output structure, cache behavior, and validation details → **[Video and audio ingestion](./docs/media.md)**
 
 ## What you actually do
 
-**Feed it.** Anything text-shaped: docs, PDFs, chat exports, meeting transcripts, screenshots, URLs.
+**Feed it.** Documents, PDFs, chat exports, meeting transcripts, screenshots, URLs, and local video/audio through the evidence preparation step above.
 
 ```text
 /wiki-ingest ~/research
@@ -101,13 +129,13 @@ obsidian-wiki sessions-query "the auth bug with the weird retry loop"
 /wiki-status          # what's ingested, what's pending, where the hubs are
 ```
 
-All 39 skills → **[Skills Reference](https://github.com/Ar9av/obsidian-wiki/blob/main/docs/skills.md)**
+All skills → **[Skills Reference](./docs/skills.md)**
 
 ## See it
 
 Open the vault in Obsidian and hit the graph view (Cmd/Ctrl+P → "Open graph view"). Say **"color my graph"** and it tints nodes by tag, category, or visibility.
 
-Want to look before you build? [`examples/demo-vault/`](https://github.com/Ar9av/obsidian-wiki/tree/main/examples/demo-vault) is an 18-page sample vault on building reliable LLM agents, already colored by folder. Clone the repo, choose *Open folder as vault* in Obsidian, and pick that folder.
+Want to look before you build? [`examples/demo-vault/`](./examples/demo-vault) is an 18-page sample vault on building reliable LLM agents, already colored by folder. Clone the repo, choose *Open folder as vault* in Obsidian, and pick that folder.
 
 <p align="center">
   <img width="900" alt="obsidian-wiki graph view" src="https://github.com/user-attachments/assets/f2980840-4b5b-438a-8264-5ad1de42f483" />
@@ -129,19 +157,19 @@ memory.recap()                       # inject at session start
 
 No API key, no embedding model, no vector store, no network — the vault is markdown on disk, so everything your agent remembers is readable, greppable and diffable. `user_id` scopes per-person memory while knowledge stays shared.
 
-More → **[Python API](https://github.com/Ar9av/obsidian-wiki/blob/main/docs/python-api.md)**
+More → **[Python API](./docs/python-api.md)**
 
 ## It remembers between sessions
 
 A session starts with the vault's memory already in context — who you are, what threads are open, what changed recently — and ends by capturing anything reusable before the context closes.
 
 <p align="center">
-  <img width="720" alt="session lifecycle: recap injected at start, capture nudged at stop" src="https://github.com/Ar9av/obsidian-wiki/blob/main/docs/images/memory-session-lifecycle.png?raw=true" />
+  <img width="720" alt="session lifecycle: recap injected at start, capture nudged at stop" src="./docs/images/memory-session-lifecycle.png" />
 </p>
 
 `index.md`, `log.md`, `hot.md`, and the owner profile and todo index under `_meta/` all go through one writer that takes a lock and writes atomically, so parallel agents can't drop each other's updates.
 
-More → **[Memory Surface](https://github.com/Ar9av/obsidian-wiki/blob/main/docs/memory.md)**
+More → **[Memory Surface](./docs/memory.md)**
 
 ## Why this and not a notes folder
 
@@ -149,23 +177,25 @@ More → **[Memory Surface](https://github.com/Ar9av/obsidian-wiki/blob/main/doc
 - **It only reads what changed.** A manifest tracks every source ingested, so the second run processes the delta — not your whole library again.
 - **You can tell knowledge from guessing.** Every claim is tagged `extracted`, `^[inferred]`, or `^[ambiguous]`, and lint flags pages drifting into speculation.
 - **Queries stay cheap as it grows.** Titles, tags, and summaries get read before page bodies. 20 pages or 2000, roughly the same cost.
-- **It's yours.** Plain markdown in a folder. Push it to a private repo, open it in Obsidian, grep it, delete it. No service, no lock-in, nothing leaves your machine.
+- **It's yours.** Plain markdown in a folder. Push it to a private repo, open it in Obsidian, grep it, delete it. Local storage with no required hosted wiki service. Your agent provider determines how synthesis inputs are processed.
 - **It carries context across sessions.** An owner profile, open threads, and a running snapshot get injected at session start, so you don't re-explain yourself.
 - **Works where you already work.** One `.skills/` directory, symlinked into every agent you use.
 
-More → **[Architecture](https://github.com/Ar9av/obsidian-wiki/blob/main/docs/architecture.md)**
+More → **[Architecture](./docs/architecture.md)**
 
 ## How it compares
 
-| | obsidian-wiki | Desktop LLM-wiki apps | MCP memory servers | Single-skill LLM wikis |
+| | obsidian-wiki-video | Desktop LLM-wiki apps | MCP memory servers | Single-skill LLM wikis |
 |---|---|---|---|---|
 | **Where knowledge lives** | Markdown in your Obsidian vault | A folder the app manages | A database or event log | A markdown folder |
 | **Works with** | Claude Code, Codex, Cursor, Gemini CLI, and a dozen more | The app itself | Any MCP client | Usually one agent |
-| **What you install** | Markdown skills; the Python CLI is optional | A desktop app plus an LLM API key | A server process | One skill |
+| **What you install** | Markdown skills; media ingestion adds the Python CLI, optional packages, and FFmpeg | A desktop app plus an LLM API key | A server process | One skill |
 | **Mines past agent sessions** | Claude, Codex, Copilot, Hermes, OpenClaw, Pi | No | Captures new sessions only | No |
 | **Keeps itself clean** | Lint, dedup, cross-linking, tag taxonomy | Varies | Not applicable | Lint, if anything |
 
 ## Does it actually help?
+
+The following graph-query results come from the upstream project. They are not a video/audio benchmark of this fork; see [prototype validation](./docs/media.md#prototype-validation) for the media trial.
 
 Structural questions — "how is X connected to Y", "which pages hold my vault together",
 "what breaks if I delete this" — are the ones a plain agent is worst at. It has to grep
@@ -220,25 +250,26 @@ Full data, per-run logs and the scaling measurements are in
 
 | | |
 |---|---|
-| **[Installation](https://github.com/Ar9av/obsidian-wiki/blob/main/docs/installation.md)** | pip, clone, agent-driven setup, multiple vaults |
-| **[Skills Reference](https://github.com/Ar9av/obsidian-wiki/blob/main/docs/skills.md)** | All 39 skills and their slash commands |
-| **[Agent Compatibility](https://github.com/Ar9av/obsidian-wiki/blob/main/docs/agents.md)** | The full matrix + per-agent manual setup |
-| **[CLI Reference](https://github.com/Ar9av/obsidian-wiki/blob/main/docs/cli.md)** | Every `obsidian-wiki` subcommand |
-| **[Configuration](https://github.com/Ar9av/obsidian-wiki/blob/main/docs/configuration.md)** | Config vars, QMD semantic search, `_raw/` staging, GitHub sync |
-| **[Architecture](https://github.com/Ar9av/obsidian-wiki/blob/main/docs/architecture.md)** | The four ingest stages, vault structure, what we added to Karpathy's pattern |
-| **[Python API](https://github.com/Ar9av/obsidian-wiki/blob/main/docs/python-api.md)** | `from obsidian_wiki import Memory` — use a vault as agent memory |
-| **[Memory Surface](https://github.com/Ar9av/obsidian-wiki/blob/main/docs/memory.md)** | The index, log, hot cache, owner profile, and todo index |
-| **[Session Brain](https://github.com/Ar9av/obsidian-wiki/blob/main/docs/session-brain.md)** | Topic graph over your agent session history |
-| **[Browser Extension](https://github.com/Ar9av/obsidian-wiki/blob/main/docs/browser-extension.md)** | Capture pages into the vault, and fill web forms from it |
-| **[Deployment](https://github.com/Ar9av/obsidian-wiki/blob/main/docs/deployment.md)** | Run a vault as a Dockerized memory service agents reach over HTTP/MCP |
-| **[Contributing](https://github.com/Ar9av/obsidian-wiki/blob/main/docs/contributing.md)** | Adding skills, keeping the READMEs in sync |
+| **[Video and audio ingestion](./docs/media.md)** | Media setup, measurements, evidence bundles, limitations, and validation |
+| **[Installation](./docs/installation.md)** | pip, clone, agent-driven setup, multiple vaults |
+| **[Skills Reference](./docs/skills.md)** | All skills and their slash commands |
+| **[Agent Compatibility](./docs/agents.md)** | The full matrix + per-agent manual setup |
+| **[CLI Reference](./docs/cli.md)** | Every `obsidian-wiki` subcommand |
+| **[Configuration](./docs/configuration.md)** | Config vars, QMD semantic search, `_raw/` staging, GitHub sync |
+| **[Architecture](./docs/architecture.md)** | The four ingest stages, vault structure, what we added to Karpathy's pattern |
+| **[Python API](./docs/python-api.md)** | `from obsidian_wiki import Memory` — use a vault as agent memory |
+| **[Memory Surface](./docs/memory.md)** | The index, log, hot cache, owner profile, and todo index |
+| **[Session Brain](./docs/session-brain.md)** | Topic graph over your agent session history |
+| **[Browser Extension](./docs/browser-extension.md)** | Capture pages into the vault, and fill web forms from it |
+| **[Deployment](./docs/deployment.md)** | Run a vault as a Dockerized memory service agents reach over HTTP/MCP |
+| **[Contributing](./docs/contributing.md)** | Adding skills, keeping the READMEs in sync |
 
 ## Contributing
 
-This is early. The skills work, but there's room to make the brain smarter — better cross-referencing, sharper deduplication, bigger vaults, new ingest sources. If you have a workflow that could be a skill, [PRs are welcome](https://github.com/Ar9av/obsidian-wiki/blob/main/docs/contributing.md).
+This is early. The skills work, but there's room to make the brain smarter — better cross-referencing, sharper deduplication, bigger vaults, new ingest sources. If you have a workflow that could be a skill, [PRs are welcome](./docs/contributing.md).
 
-Speak another language? Translating this README is a good first PR, and it needs no code: see [Adding a README translation](https://github.com/Ar9av/obsidian-wiki/blob/main/docs/contributing.md#adding-a-readme-translation).
+Speak another language? Translating this README is a good first PR, and it needs no code: see [Adding a README translation](./docs/contributing.md#adding-a-readme-translation).
 
 ## License
 
-[MIT](https://github.com/Ar9av/obsidian-wiki/blob/main/LICENSE)
+[MIT](./LICENSE)
